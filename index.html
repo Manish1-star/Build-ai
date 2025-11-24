@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BoltAI - Lightning Fast AI from Nepal</title>
+  <meta name="description" content="BoltAI - World's fastest AI assistant • Made in Nepal by @mwnish2 • <1 sec response"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+  <style>
+    body { background: linear-gradient(135deg, #0f0f23, #1a1a3e); color: #e2e8f0; font-family: 'Inter', sans-serif; }
+    .glass { backdrop-filter: blur(16px); background: rgba(20,20,50,0.7); border: 1px solid rgba(255,255,255,0.1); }
+    .msg-user { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .msg-ai { background: rgba(30,41,59,0.9); border: 1px solid rgba(100,116,139,0.3); }
+    .star { cursor: pointer; transition: 0.3s; }
+    .star:hover { transform: scale(1.5); }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <!-- Header -->
+  <header class="glass p-6 text-center border-b border-white/10">
+    <div class="flex items-center justify-center gap-5">
+      <div class="relative">
+        <div class="w-24 h-24 rounded-2xl overflow-hidden ring-4 ring-yellow-400 shadow-2xl">
+          <img src="https://i.imgur.com/3vR9kYJ.png" alt="BoltAI Logo" class="w-full h-full object-cover">
+        </div>
+        <div class="absolute -top-3 -right-3 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse shadow-2xl">
+          <i class="fas fa-bolt text-black text-2xl"></i>
+        </div>
+      </div>
+      <div>
+        <h1 class="text-6xl font-black bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">BoltAI</h1>
+        <p class="text-yellow-300 text-xl">by @mwnish2 • Made in Nepal • < 1 sec response</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Chat Messages -->
+  <main id="messages" class="flex-1 overflow-y-auto p-6 space-y-6 max-w-4xl mx-auto"></main>
+
+  <!-- Input + Rating -->
+  <footer class="glass border-t border-white/10 p-6">
+    <div class="max-w-4xl mx-auto space-y-6">
+
+      <!-- Input Bar -->
+      <div class="flex gap-3 items-end">
+        <button onclick="startVoice()" class="btn btn-circle btn-ghost text-yellow-400"><i class="fas fa-microphone"></i></button>
+        <label class="btn btn-circle btn-ghost text-yellow-400">
+          <input type="file" id="imgUp" accept="image/*" class="hidden" onchange="handleImg()"/>
+          <i class="fas fa-paperclip"></i>
+        </label>
+        <textarea id="userIn" rows="1" class="flex-1 textarea textarea-bordered bg-transparent border-white/20 focus:border-yellow-400 resize-none text-white placeholder-gray-400" 
+          placeholder="Ask BoltAI anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+        <button onclick="send()" class="btn btn-circle bg-gradient-to-r from-yellow-400 to-orange-500 text-black hover:from-yellow-500 hover:to-orange-600">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+
+      <!-- Rating -->
+      <div class="text-center p-8 bg-black/40 rounded-3xl border border-yellow-500/30">
+        <p class="text-2xl font-bold mb-6 text-yellow-400">Rate BoltAI Experience</p>
+        <div class="flex justify-center gap-6 text-7xl mb-6">
+          <span class="star" onclick="rate(1)">Star</span>
+          <span class="star" onclick="rate(2)">Star</span>
+          <span class="star" onclick="rate(3)">Star</span>
+          <span class="star" onclick="rate(4)">Star</span>
+          <span class="star" onclick="rate(5)">Star</span>
+        </div>
+        <p id="ratingText" class="text-gray-400 text-lg mb-4">Tap stars to rate</p>
+        <button id="submitBtn" class="btn bg-yellow-400 text-black font-bold hover:bg-yellow-500" disabled>Submit Rating</button>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const KEY = "gsk_Y7qK9pL2mX8vR5tW3nZ6cB1dE4fG7hJ9kL2mN5oP8qR1sT4uV7wX9yZ2";
+    let imgData = null;
+    let rating = 0;
+
+    function addMsg(text, sender) {
+      const div = document.createElement("div");
+      div.className = `p-6 rounded-3xl max-w-2xl mx-auto shadow-2xl ${sender==='user' ? 'msg-user text-white ml-auto' : 'msg-ai'}`;
+      div.innerHTML = text + (sender==='ai' ? `<div class="text-xs opacity-60 mt-4">${new Date().toLocaleTimeString()}</div>` : '');
+      if (sender === 'ai') div.innerHTML += `<button onclick="navigator.clipboard.writeText(this.parentNode.innerText.split('Copy')[0].trim())" class="text-xs block mt-3 opacity-70 hover:underline">Copy</button>`;
+      document.getElementById("messages").appendChild(div);
+      div.scrollIntoView({behavior: "smooth"});
+    }
+
+    async function send() {
+      const input = document.getElementById("userIn");
+      let prompt = input.value.trim();
+      if (!prompt && !imgData) return;
+
+      if (imgData) addMsg(`<img src="${imgData}" class="max-w-sm rounded-2xl">`, "user");
+      if (prompt) addMsg(prompt, "user");
+
+      input.value = ""; imgData = null;
+      addMsg("BoltAI is thinking at lightning speed...", "ai");
+
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama-3.1-70b-instant",
+          messages: [{ role: "user", content: prompt || "Describe this image"}]
+        })
+      });
+
+      const data = await res.json();
+      const aiMsg = document.querySelectorAll(".msg-ai")[document.querySelectorAll(".msg-ai").length - 1];
+      aiMsg.innerHTML = data.choices[0].message.content.replace(/\n/g, '<br>') + 
+        `<div class="text-xs opacity-60 mt-4">${new Date().toLocaleTimeString()}</div>
+         <button onclick="navigator.clipboard.writeText(this.parentNode.innerText.split('Copy')[0].trim())" class="text-xs block mt-3 opacity-70 hover:underline">Copy</button>`;
+    }
+
+    function handleImg() {
+      const file = document.getElementById("imgUp").files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => imgData = e.target.result;
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function startVoice() {
+      if (!('webkitSpeechRecognition' in window)) return alert("Voice not supported");
+      const recognition = new webkitSpeechRecognition();
+      recognition.onresult = e => document.getElementById("userIn").value = e.results[0][0].transcript;
+      recognition.start();
+    }
+
+    function rate(n) {
+      rating = n;
+      document.querySelectorAll('.star').forEach((s,i) => s.style.color = i < n ? '#fbbf24' : '#6b7280');
+      document.getElementById('ratingText').innerText = `You rated \( {n} star \){n>1?'s':''}!`;
+      document.getElementById('submitBtn').disabled = false;
+      document.getElementById('submitBtn').onclick = () => {
+        if (n >= 4) window.open("https://instagram.com/mwnish2", "_blank");
+        else alert("Thanks for feedback! We'll improve BoltAI");
+      };
+    }
+
+    // Welcome
+    addMsg("Namaste! I'm <strong>BoltAI</strong><br>Lightning-fast AI assistant from Nepal<br>Ask me anything in any language!", "ai");
+  </script>
+</body>
+</html>
